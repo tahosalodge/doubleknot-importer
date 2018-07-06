@@ -1,18 +1,15 @@
 require("dotenv").config();
 const fs = require("fs");
 const puppeteer = require("puppeteer");
+const parseEventData = require("./parseEventData");
 
 async function run() {
-  const browserConfig = {
-    headless: false
-  };
-  const browser = await puppeteer.launch(browserConfig);
-  const page = await browser.newPage({
-    viewport: {
-      width: 1440,
-      height: 900
-    }
+  const browser = await puppeteer.launch({
+    // headless: false,
+    // slowMo: 20,
+    // devtools: true
   });
+  const page = await browser.newPage();
 
   await page.goto(
     "https://denverboyscouts.doubleknot.com/Rosters/logon.aspx?orgkey=1704"
@@ -24,31 +21,32 @@ async function run() {
   await page.keyboard.type(process.env.DK_PASS);
   await page.click("#ButtonLogon");
   await page.waitForNavigation();
-  // select Tahosa Lodge
-  await page.select("#ListOfOrgs", "1156");
-  await page.waitForNavigation();
 
+  // go to event page
   await page.goto(
     "https://denverboyscouts.doubleknot.com/ManageEvents/EventsManagement.aspx?emActivityKey=2338944"
   );
   await page.click("#tLink_ViewExport");
   await page.waitForNavigation();
+
+  // download event data
   const csv = await page.evaluate(() => {
-    const csvLink = document.getElementById("lnkDownLoadFile").href;
-    return fetch(csvLink, {
+    const url = document.getElementById("lnkDownLoadFile").href;
+    return fetch(url, {
       method: "GET",
       credentials: "include"
     }).then(res => res.text());
   });
+  browser.close();
 
-  fs.writeFile(`src/data/${Date.now()}.csv`, csv, error => {
+  // write to JSON
+  const eventJson = parseEventData(csv);
+  fs.writeFile(`src/data/${Date.now()}.json`, eventJson, error => {
     if (error) {
       throw error;
     }
-    console.log("File saved!");
+    console.log("File written!");
   });
-
-  browser.close();
 }
 try {
   run();
