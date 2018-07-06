@@ -2,10 +2,20 @@ const Papa = require("papaparse");
 
 function parseEventData(csv) {
   const { data } = Papa.parse(csv, {
-    header: true
+    header: true,
+    dynamicTyping: true
   });
 
-  return JSON.stringify(data);
+  const eventData = data.map(registration => {
+    Object.entries(registration).forEach(([key, value]) => {
+      if (!value) {
+        delete registration[key];
+      }
+    });
+    return registration;
+  });
+
+  return JSON.stringify(eventData);
 }
 
 module.exports = parseEventData;
